@@ -1,0 +1,45 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+libdeps/
+
+# Configuración local de editores y asistentes
+.vscode/
+.claude/
+*.code-workspace
+
+# Copias locales
+backup/
+*.bak
+*.backup
+*~
+
+# Credenciales
+.env
+.env.*
+secrets.h
+include/secrets.h
+src/secrets.h
+credentials.h
+include/credentials.h
+src/credentials.h
+*.pem
+*.key
+
+# Archivos compilados
+build/
+dist/
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.a
+*.d
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
