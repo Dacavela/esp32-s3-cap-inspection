@@ -149,7 +149,7 @@ const ei_learning_block_t ei_learning_blocks_1042490_1[ei_learning_blocks_104249
 };
 
 ei_fill_result_visual_ad_f32_config_t ei_fill_result_visual_anomaly_f32_config_1042490_37 = {
-    .threshold = 7.4,
+    .threshold = 6.1,
     .grid_size_x = 5,
     .grid_size_y = 5
 };
@@ -178,7 +178,7 @@ const ei_impulse_t impulse_1042490_1 = {
     .project_name = "SeparadorTapas2",
     .impulse_id = 1,
     .impulse_name = "Impulse #1",
-    .deploy_version = 6,
+    .deploy_version = 7,
 
     .nn_input_frame_size = 9216,
     .raw_sample_count = 9216,

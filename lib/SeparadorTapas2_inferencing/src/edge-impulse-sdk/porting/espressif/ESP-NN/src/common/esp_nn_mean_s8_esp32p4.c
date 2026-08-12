@@ -1,1 +1,1 @@
-/* ESP32-P4 (RISC-V) only — not compiled on Xtensa/ESP32-S3 */
+// ESP32-P4 (RISC-V) — excluido: este proyecto compila para ESP32-S3 (Xtensa)

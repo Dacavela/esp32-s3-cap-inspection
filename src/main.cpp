@@ -10,10 +10,14 @@
 // ── Constantes de aplicación ──────────────────────────────────────────────────
 #define LED_IO2   2
 
-#define ANOMALY_THRESHOLD    6.0f
+// Buenas centradas: 2.5-4.4 (picos ~4.9) | Malas centradas: 6.8-8.9
+// 5.5 = punto medio con margen a ambos lados
+#define ANOMALY_THRESHOLD    5.5f
 
 // Tiempo que tarda la tapa en recorrer sensor→cámara (ajustar físicamente)
-#define SENSOR_TO_CAMERA_MS  150
+// Debe coincidir con el valor de pictaker.cpp para que la tapa quede en el
+// mismo encuadre que durante la captura del dataset.
+#define SENSOR_TO_CAMERA_MS  200
 
 // Tiempo que tarda la tapa en recorrer cámara→servo (ajustar físicamente)
 #define CAMERA_TO_SERVO_MS   1500
@@ -34,7 +38,7 @@
 enum class State {
     IDLE,        // banda corriendo, esperando tapa en el sensor
     APPROACH,    // tapa detectada, esperando que llegue a la cámara
-    INSPECTING,  // banda parada, esperando 2 inferences frescas
+    INSPECTING,  // banda parada, 1 inference descartada + mediana de 3
     RELEASING,   // banda corriendo, tapa viajando cámara→servo
     COOLDOWN     // servo reset, esperando que el sensor se libere
 };
@@ -53,6 +57,7 @@ static uint32_t stateStart  = 0;   // millis() al entrar en el estado actual
 static uint32_t stopTime    = 0;   // millis() al parar la banda
 static uint32_t lastInfTs   = 0;   // timestamp de la última inference procesada
 static int      inferCount  = 0;   // inferences válidas recibidas en INSPECTING
+static float    infScores[3] = {0}; // scores de las inferences 2-4 (para mediana)
 static bool     capBad      = false;
 
 static const char *stateName(State s) {
@@ -134,9 +139,12 @@ void loop()
         }
         break;
 
-    // ── INSPECTING: banda parada, esperar 2 inferences frescas ───────────────
-    //   Inference 1: limpia el pipeline (frame capturado antes de parar)
-    //   Inference 2: frame garantizado con tapa quieta → decisión
+    // ── INSPECTING: banda parada, decidir por MEDIANA de 3 inferences ─────────
+    //   Inference 1: se DESCARTA (su frame pudo capturarse antes de parar —
+    //   en el log las tapas malas daban ~3 en la 1ª y 7-8 en las siguientes).
+    //   Inferences 2-4: tapa garantizada quieta → mediana de las 3.
+    //   La mediana ignora un glitch aislado (pico espurio en tapa buena) pero
+    //   rechaza cuando la anomalía es sostenida (tapa mala real).
     case State::INSPECTING: {
         // Timeout de seguridad: 4 s sin inference → dejar pasar la tapa
         if (now - stopTime > 4000) {
@@ -151,14 +159,22 @@ void loop()
         if (infTs > lastInfTs) {
             lastInfTs = infTs;
             inferCount++;
-            Serial.printf("[FSM] Inference %d/2  score=%.4f\n",
-                          inferCount, classifier.getAnomalyScore());
+            float score = classifier.getAnomalyScore();
 
-            if (inferCount >= 2) {
-                float score = classifier.getAnomalyScore();
-                capBad      = score >= ANOMALY_THRESHOLD;
-                Serial.printf("[Decision] score=%.4f  %s\n",
-                              score, capBad ? "ANOMALIA" : "BUENA");
+            if (inferCount == 1) {
+                Serial.printf("[FSM] Inference 1/4  score=%.4f (descartada: frame pre-parada)\n", score);
+            } else {
+                infScores[inferCount - 2] = score;
+                Serial.printf("[FSM] Inference %d/4  score=%.4f\n", inferCount, score);
+            }
+
+            if (inferCount >= 4) {
+                // Mediana de 3: ordenar y tomar el del medio
+                float a = infScores[0], b = infScores[1], c = infScores[2];
+                float median = fmaxf(fminf(a, b), fminf(fmaxf(a, b), c));
+                capBad = median >= ANOMALY_THRESHOLD;
+                Serial.printf("[Decision] mediana=%.4f (%.2f, %.2f, %.2f)  %s\n",
+                              median, a, b, c, capBad ? "ANOMALIA" : "BUENA");
 
                 if (capBad) peripherals.servoReject();
                 peripherals.motorRun();

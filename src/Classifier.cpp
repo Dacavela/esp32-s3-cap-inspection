@@ -145,6 +145,9 @@ void Classifier::_loop() {
         // 4. Leer anomaly score
         // FOMO-AD (visual anomaly) guarda el resultado en visual_ad_result,
         // NO en result.anomaly (ese campo es para GMM/K-means clásico).
+        // max_value = celda más anómala del grid 5×5 — es lo que usábamos al
+        // calibrar el umbral y detecta defectos localizados que el promedio
+        // diluiría entre las 25 celdas.
 #if defined(EI_CLASSIFIER_HAS_VISUAL_ANOMALY) && EI_CLASSIFIER_HAS_VISUAL_ANOMALY == 1
         float score = result.visual_ad_result.max_value;
 #else
